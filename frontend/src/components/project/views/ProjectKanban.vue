@@ -152,7 +152,7 @@
 								<TaskDraggable
 									v-bind="DRAG_OPTIONS"
 									:handle="taskDragHandle"
-									:delay="isTouchDevice ? 300 : 1000"
+									:delay="isTouchDevice ? 300 : 0"
 									:model-value="bucket.tasks"
 									:group="{name: 'tasks', put: shouldAcceptDrop(bucket) && !dragBucket}"
 									:disabled="!canWrite"
@@ -353,6 +353,9 @@ const DRAG_OPTIONS = {
 	ghostClass: 'ghost',
 	dragClass: 'task-dragging',
 	delayOnTouchOnly: true,
+	// Start auto-scrolling the board well before the pointer reaches its very edge.
+	scrollSensitivity: 100,
+	scrollSpeed: 20,
 	delay: 1000,
 } as const
 

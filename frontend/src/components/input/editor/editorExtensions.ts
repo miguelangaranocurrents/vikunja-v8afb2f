@@ -3,7 +3,7 @@ import {nextTick, toValue, type MaybeRefOrGetter, type Ref} from 'vue'
 import StarterKit from '@tiptap/starter-kit'
 import {createNodeFromContent, Extension, mergeAttributes, type Editor, type Extensions} from '@tiptap/core'
 import {Plugin, PluginKey} from '@tiptap/pm/state'
-import {Fragment} from '@tiptap/pm/model'
+import {Fragment, type Node as PMNode} from '@tiptap/pm/model'
 import {marked} from 'marked'
 
 import Link from '@tiptap/extension-link'
@@ -232,6 +232,37 @@ export function createEditorExtensions(deps: EditorExtensionDeps): Extensions {
 					key: new PluginKey('pasteHandler'),
 					props: {
 						clipboardParser: createClipboardParser(this.editor.schema),
+						clipboardTextSerializer: slice => {
+							const lines: string[] = []
+							const walk = (node: PMNode | Fragment, prefix: string) => {
+								node.forEach((child) => {
+									const name = child.type.name
+									if (name === 'bulletList' || name === 'orderedList' || name === 'taskList') {
+										child.forEach((item, _io, i) => {
+											let marker = '- '
+											if (name === 'orderedList') {
+												marker = `${(child.attrs.start ?? 1) + i}. `
+											} else if (name === 'taskList') {
+												marker = item.attrs.checked ? '- [x] ' : '- [ ] '
+											}
+											const start = lines.length
+											walk(item, prefix + '  ')
+											if (lines.length > start) {
+												lines[start] = prefix + marker + lines[start].slice(prefix.length + 2)
+											}
+										})
+									} else if (child.isTextblock) {
+										lines.push(prefix + child.textContent)
+									} else if (child.childCount > 0) {
+										walk(child, prefix)
+									} else if (child.isText) {
+										lines.push(prefix + (child.text ?? ''))
+									}
+								})
+							}
+							walk(slice.content, '')
+							return lines.join('\n')
+						},
 						transformPasted: slice => repairSliceContent(slice),
 
 						handlePaste: (view, event) => {
